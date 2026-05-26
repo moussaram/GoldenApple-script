@@ -31,7 +31,9 @@ async function refresh() {
   try {
     const state = await send({ type: 'GET_ENGINE_STATE' });
     if (state?.backendUrl) backendUrlInput.value = state.backendUrl;
-    if (state?.clientId && !clientIdInput.value) clientIdInput.value = state.clientId;
+    if (state?.state?.paired && state?.clientId && !clientIdInput.value) {
+      clientIdInput.value = state.clientId;
+    }
     renderStatus(state);
   } catch (error) {
     renderError(`Background extension indisponible: ${error?.message || error}`);
@@ -63,7 +65,12 @@ document.getElementById('pair').addEventListener('click', async () => {
 
     const result = await send({ type: 'PAIR_WITH_CLIENT', clientId });
     const state = await send({ type: 'GET_ENGINE_STATE' });
-    renderStatus(state, result?.ok ? 'Pairing OK' : `Erreur: ${result?.error || 'pairing impossible'}`);
+    renderStatus(
+      state,
+      result?.ok
+        ? 'Pairing OK'
+        : `Erreur: ${result?.error || 'pairing impossible'}. Verifie que tu as copie le client_id depuis l'application Render.`
+    );
   } catch (error) {
     renderError(`Erreur extension: ${error?.message || error}`);
   }
