@@ -87,13 +87,16 @@
         
         if (hostname.includes('1xbet')) return '1xbet';
         if (hostname.includes('melbet')) return 'melbet';
-        if (hostname.includes('winwin')) return 'winwin';
+        if (hostname.includes('winwin') || hostname === 'winwin-17094.pro') return 'winwin';
         if (hostname.includes('megapari')) return 'megapari';
         if (hostname.includes('1xgame')) return '1xgame';
         if (hostname.includes('1xslot')) return '1xslot';
         
         // Détection par patterns génériques
-        if (document.querySelector('[class*="apple-fortune"], [class*="apple_of_fortune"], .game-apple')) {
+        if (
+            window.location.pathname.includes('apple-of-fortune') ||
+            document.querySelector('[class*="apple-fortune" i], [class*="apple_of_fortune" i], .game-apple')
+        ) {
             return 'generic_apple';
         }
         
@@ -203,7 +206,7 @@
         // Écouter les clics (mises du joueur)
         document.addEventListener('click', (e) => {
             if (ENGINE.state === 'analyzing' || ENGINE.state === 'scanning') {
-                const cell = e.target.closest('[class*="apple"], [class*="cell"], [class*="grid"]');
+                const cell = e.target.closest('[class*="apple" i], [class*="cell" i], [class*="grid" i], [class*="tile" i], [role="button"]');
                 if (cell) {
                     ENGINE.modules.detector.handleUserClick(cell);
                 }

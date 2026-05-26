@@ -17,9 +17,9 @@ class AppleDetector {
 
         // Seuils de détection
         this.thresholds = {
-            minCellSize: 20,
-            maxCellSize: 200,
-            minConfidence: 0.4,
+            minCellSize: 16,
+            maxCellSize: 320,
+            minConfidence: 0.3,
             colorDistance: 30
         };
 
@@ -112,31 +112,41 @@ class AppleDetector {
         const selectors = {
             // Sélecteurs spécifiques aux pommes
             apple_specific: [
-                '[class*="apple_"]', '[class*="apple-"]', '[class*="apple"]',
-                '[id*="apple"]', '[data-apple]', '[data-fruit]',
-                'div[class*="apple"]', 'span[class*="apple"]',
-                'img[src*="apple"]', 'img[alt*="apple"]'
+                '[class*="apple_" i]', '[class*="apple-" i]', '[class*="apple" i]',
+                '[id*="apple" i]', '[data-apple]', '[data-fruit]',
+                '[class*="fruit" i]', '[class*="malus" i]', '[class*="bonus" i]',
+                'div[class*="apple" i]', 'span[class*="apple" i]',
+                'img[src*="apple" i]', 'img[alt*="apple" i]'
             ],
             // Sélecteurs de cellules de jeu
             game_cells: [
                 '.game-cell', '.fortune-cell', '.grid-cell',
                 '.cell', '.slot', '.item', '.tile',
-                '[class*="cell"]', '[class*="grid"]',
-                '[class*="fortune"]', '[class*="slot"]'
+                '[class*="cell" i]', '[class*="grid" i]',
+                '[class*="tile" i]', '[class*="item" i]',
+                '[class*="field" i]', '[class*="button" i]',
+                '[class*="fortune" i]', '[class*="slot" i]',
+                '[data-testid*="cell" i]', '[data-testid*="tile" i]',
+                '[data-test*="cell" i]', '[data-test*="tile" i]'
             ],
             // Sélecteurs de grille
             grid_items: [
                 '.grid-item', '.grid-cell', '.board-cell',
                 '.table-cell', 'td.game', 'div.cell',
-                '[role="gridcell"]', '[role="button"]'
+                '[role="gridcell"]', '[role="button"]',
+                '[class*="board" i] [role="button"]',
+                '[class*="game" i] [role="button"]',
+                '[class*="fortune" i] [role="button"]'
             ],
             // Sélecteurs génériques
             generic: [
-                'div[class*="win"]', 'div[class*="lose"]',
-                'div[class*="good"]', 'div[class*="bad"]',
-                'div[class*="success"]', 'div[class*="fail"]',
-                'div[class*="hit"]', 'div[class*="miss"]',
-                'div[class*="selected"]', 'div[class*="choice"]'
+                'div[class*="win" i]', 'div[class*="lose" i]',
+                'div[class*="good" i]', 'div[class*="bad" i]',
+                'div[class*="success" i]', 'div[class*="fail" i]',
+                'div[class*="hit" i]', 'div[class*="miss" i]',
+                'div[class*="selected" i]', 'div[class*="choice" i]',
+                'button[class*="win" i]', 'button[class*="lose" i]',
+                '[aria-label*="apple" i]', '[aria-label*="win" i]', '[aria-label*="lose" i]'
             ],
             // Sélecteurs canvas/jeux
             canvas_elements: [

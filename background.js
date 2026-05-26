@@ -599,7 +599,7 @@ function detectPlatform(url) {
   
   if (domain.includes('1xbet')) return '1xbet';
   if (domain.includes('melbet')) return 'melbet';
-  if (domain.includes('winwin')) return 'winwin';
+  if (domain.includes('winwin') || domain === 'winwin-17094.pro') return 'winwin';
   if (domain.includes('megapari')) return 'megapari';
   if (domain.includes('1xgame')) return '1xgame';
   if (domain.includes('1xslot')) return '1xslot';
@@ -719,7 +719,7 @@ function handleTabUpdate(tabId, changeInfo, tab) {
 
 function isGamePage(url) {
   if (!url) return false;
-  const patterns = ['apple', 'fortune', 'game', '1xgame'];
+  const patterns = ['apple', 'apple-of-fortune', 'fortune', 'game', '1xgame'];
   return patterns.some(p => url.toLowerCase().includes(p));
 }
 
