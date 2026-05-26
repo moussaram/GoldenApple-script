@@ -1,0 +1,14 @@
+﻿.DS_Store
+Thumbs.db
+*.log
+*.zip
+*.crx
+*.pem
+*.key
+*.jks
+.env
+.env.*
+coverage/
+dist/
+build/
+node_modules/

@@ -1,0 +1,62 @@
+{
+  "manifest_version": 3,
+  "name": "Apple of Fortune Engine",
+  "version": "2.0.0",
+  "description": "Moteur d'analyse Apple of Fortune - Communication backend Node.js",
+  "permissions": [
+    "storage",
+    "webRequest",
+    "scripting",
+    "tabs",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "*://*.1xbet.com/*",
+    "*://*.melbet.com/*",
+    "*://*.winwin.com/*",
+    "*://*.megapari.com/*",
+    "*://*.1xgame.com/*",
+    "*://*.1xslot.com/*",
+    "*://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "GoldenApple Engine",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.1xbet.com/*",
+        "*://*.melbet.com/*",
+        "*://*.winwin.com/*",
+        "*://*.megapari.com/*",
+        "*://*.1xgame.com/*",
+        "*://*.1xslot.com/*"
+      ],
+      "js": [
+        "core/analyzer.js",
+        "core/detector.js",
+        "core/predictor.js",
+        "content.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "communication/websocket.js",
+        "communication/auth.js",
+        "communication/pairing.js",
+        "communication/sync.js",
+        "popup.js",
+        "popup.html"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

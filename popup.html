@@ -1,0 +1,81 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>GoldenApple Engine</title>
+    <style>
+      body {
+        width: 320px;
+        margin: 0;
+        padding: 14px;
+        background: #070b12;
+        color: #f4f7fb;
+        font-family: Arial, sans-serif;
+      }
+
+      label {
+        display: block;
+        margin: 10px 0 5px;
+        color: #9aa8bc;
+        font-size: 11px;
+        text-transform: uppercase;
+      }
+
+      input {
+        box-sizing: border-box;
+        width: 100%;
+        padding: 9px;
+        border: 1px solid #263348;
+        border-radius: 6px;
+        background: #0c1320;
+        color: #f4f7fb;
+        font-size: 12px;
+      }
+
+      button {
+        width: 100%;
+        margin-top: 10px;
+        padding: 10px;
+        border: 0;
+        border-radius: 6px;
+        background: #00e676;
+        color: #07100b;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      button.secondary {
+        background: #263348;
+        color: #f4f7fb;
+      }
+
+      .status {
+        margin-top: 12px;
+        padding: 10px;
+        border: 1px solid #263348;
+        border-radius: 6px;
+        background: #0c1320;
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .ok { color: #00e676; }
+      .bad { color: #ff4d8d; }
+      .muted { color: #9aa8bc; }
+    </style>
+  </head>
+  <body>
+    <label for="backendUrl">Backend URL</label>
+    <input id="backendUrl" value="http://127.0.0.1:3000">
+
+    <label for="clientId">Client ID de l'application</label>
+    <input id="clientId" placeholder="colle le client_id affiché dans l'app">
+
+    <button id="pair">Pair + connecter</button>
+    <button id="disconnect" class="secondary">Déconnecter</button>
+    <button id="refresh" class="secondary">Rafraîchir statut</button>
+
+    <div id="status" class="status muted">Chargement...</div>
+    <script src="popup.js"></script>
+  </body>
+</html>
