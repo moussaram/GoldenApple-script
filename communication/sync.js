@@ -761,4 +761,4 @@ class EngineSync {
 }
 
 // Exporter
-window.EngineSync = EngineSync;
+globalThis.EngineSync = EngineSync;

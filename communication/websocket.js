@@ -539,8 +539,8 @@ class EngineWebSocket {
 
     emit(event, data) {
         // Dispatcher l'événement sur le window pour compatibilité
-        if (window.__engine?.eventBus) {
-            window.__engine.eventBus.dispatchEvent(new CustomEvent(`ws:${event}`, { detail: data }));
+        if (globalThis.__engine?.eventBus) {
+            globalThis.__engine.eventBus.dispatchEvent(new CustomEvent(`ws:${event}`, { detail: data }));
         }
     }
 
@@ -576,4 +576,4 @@ class EngineWebSocket {
 }
 
 // Exporter
-window.EngineWebSocket = EngineWebSocket;
+globalThis.EngineWebSocket = EngineWebSocket;

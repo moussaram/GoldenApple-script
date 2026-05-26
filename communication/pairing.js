@@ -315,4 +315,4 @@ class EnginePairing {
 }
 
 // Exporter
-window.EnginePairing = EnginePairing;
+globalThis.EnginePairing = EnginePairing;

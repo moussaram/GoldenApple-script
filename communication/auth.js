@@ -213,7 +213,7 @@ class EngineAuth {
     async generateKeyPair() {
         try {
             // Utiliser SubtleCrypto si disponible
-            if (window.crypto?.subtle) {
+            if (globalThis.crypto?.subtle) {
                 const keyPair = await crypto.subtle.generateKey(
                     {
                         name: 'RSA-OAEP',
@@ -250,7 +250,7 @@ class EngineAuth {
     async signMessage(message) {
         const payload = typeof message === 'string' ? message : JSON.stringify(message);
         
-        if (this.keys?.algorithm === 'RSA-OAEP-2048' && window.crypto?.subtle) {
+        if (this.keys?.algorithm === 'RSA-OAEP-2048' && globalThis.crypto?.subtle) {
             try {
                 const privateKey = await crypto.subtle.importKey(
                     'jwk', this.keys.privateKey,
@@ -293,7 +293,7 @@ class EngineAuth {
         const encoder = new TextEncoder();
         const data = encoder.encode(str);
         
-        if (window.crypto?.subtle) {
+        if (globalThis.crypto?.subtle) {
             const hashBuffer = await crypto.subtle.digest('SHA-256', data);
             return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
         }
@@ -434,4 +434,4 @@ class EngineAuth {
 }
 
 // Exporter
-window.EngineAuth = EngineAuth;
+globalThis.EngineAuth = EngineAuth;

@@ -12,41 +12,70 @@ function renderStatus(state, message = '') {
   const authenticated = !!state?.state?.authenticated;
 
   statusBox.className = `status ${connected && paired ? 'ok' : 'bad'}`;
-  statusBox.innerHTML = [
-    message ? `<div>${message}</div>` : '',
-    `<div>Backend: ${state?.backendUrl || '-'}</div>`,
-    `<div>Client: ${state?.clientId || '-'}</div>`,
-    `<div>Connecté: ${connected ? 'oui' : 'non'}</div>`,
-    `<div>Authentifié: ${authenticated ? 'oui' : 'non'}</div>`,
-    `<div>Pairé: ${paired ? 'oui' : 'non'}</div>`,
-  ].filter(Boolean).join('');
+  statusBox.textContent = [
+    message,
+    `Backend: ${state?.backendUrl || '-'}`,
+    `Client: ${state?.clientId || '-'}`,
+    `Connecte: ${connected ? 'oui' : 'non'}`,
+    `Authentifie: ${authenticated ? 'oui' : 'non'}`,
+    `Paire: ${paired ? 'oui' : 'non'}`,
+  ].filter(Boolean).join('\n');
+}
+
+function renderError(message) {
+  statusBox.className = 'status bad';
+  statusBox.textContent = message;
 }
 
 async function refresh() {
-  const state = await send({ type: 'GET_ENGINE_STATE' });
-  if (state?.backendUrl) backendUrlInput.value = state.backendUrl;
-  if (state?.clientId && !clientIdInput.value) clientIdInput.value = state.clientId;
-  renderStatus(state);
+  try {
+    const state = await send({ type: 'GET_ENGINE_STATE' });
+    if (state?.backendUrl) backendUrlInput.value = state.backendUrl;
+    if (state?.clientId && !clientIdInput.value) clientIdInput.value = state.clientId;
+    renderStatus(state);
+  } catch (error) {
+    renderError(`Background extension indisponible: ${error?.message || error}`);
+  }
 }
 
 document.getElementById('pair').addEventListener('click', async () => {
   const backendUrl = backendUrlInput.value.trim().replace(/\/$/, '');
   const clientId = clientIdInput.value.trim();
 
-  const saved = await send({ type: 'SET_BACKEND_URL', backendUrl });
-  if (!saved?.ok) {
-    renderStatus({}, saved?.error || 'Backend URL invalide');
+  if (!backendUrl) {
+    renderError('Backend URL obligatoire');
     return;
   }
 
-  const result = await send({ type: 'PAIR_WITH_CLIENT', clientId });
-  const state = await send({ type: 'GET_ENGINE_STATE' });
-  renderStatus(state, result?.ok ? 'Pairing OK' : `Erreur: ${result?.error || 'pairing impossible'}`);
+  if (!clientId) {
+    renderError("Client ID obligatoire. Copie le client_id affiche dans l'application.");
+    return;
+  }
+
+  renderError('Connexion en cours...');
+
+  try {
+    const saved = await send({ type: 'SET_BACKEND_URL', backendUrl });
+    if (!saved?.ok) {
+      renderError(saved?.error || 'Backend URL invalide');
+      return;
+    }
+
+    const result = await send({ type: 'PAIR_WITH_CLIENT', clientId });
+    const state = await send({ type: 'GET_ENGINE_STATE' });
+    renderStatus(state, result?.ok ? 'Pairing OK' : `Erreur: ${result?.error || 'pairing impossible'}`);
+  } catch (error) {
+    renderError(`Erreur extension: ${error?.message || error}`);
+  }
 });
 
 document.getElementById('disconnect').addEventListener('click', async () => {
-  await send({ type: 'DISCONNECT_ENGINE' });
-  await refresh();
+  try {
+    await send({ type: 'DISCONNECT_ENGINE' });
+    await refresh();
+  } catch (error) {
+    renderError(`Erreur deconnexion: ${error?.message || error}`);
+  }
 });
 
 document.getElementById('refresh').addEventListener('click', refresh);
