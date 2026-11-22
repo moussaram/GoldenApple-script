@@ -210,7 +210,7 @@
         if (!cell) return;
         const el = cell.elementRef;
         const current = desired.get(el);
-        if (!current || priority > current.priority) desired.set(el, { color, title, priority });
+        if (!current || priority > current.priority) desired.set(el, { color, title, priority, expiresAt: 0 });
       };
 
       for (const cell of (this.analysis?.appleCells || [])) {
@@ -224,6 +224,13 @@
       if (prediction && (!prediction.validUntil || prediction.validUntil >= Date.now())) {
         for (const cell of (prediction.recommendedCells || [])) {
           add(cell.row, cell.col, 'green', 'Recommandation favorable du Predictor', 1);
+          const target = this.findDomCell(cell.row, cell.col);
+          if (target) {
+            const current = desired.get(target.elementRef);
+            if (current && current.title === 'Recommandation favorable du Predictor') {
+              current.expiresAt = prediction.validUntil || 0;
+            }
+          }
         }
       }
 
@@ -241,6 +248,7 @@
         marker.firstElementChild.className = 'ga-dot ' + spec.color;
         marker.title = spec.title;
         marker._target = element;
+        marker._expiresAt = spec.expiresAt || 0;
       }
       for (const [element, marker] of this.markers) {
         if (!active.has(element) || !element.isConnected) {
@@ -253,7 +261,12 @@
 
     updatePositions() {
       if (!this.markerLayer || !this.visible) return;
-      for (const marker of this.markers.values()) {
+      for (const [element, marker] of this.markers) {
+        if (marker._expiresAt && marker._expiresAt < Date.now()) {
+          marker.remove();
+          this.markers.delete(element);
+          continue;
+        }
         const target = marker._target;
         if (!target || !target.isConnected || target.ownerDocument !== document) {
           marker.style.display = 'none';
