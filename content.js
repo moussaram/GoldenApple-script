@@ -110,8 +110,10 @@
     clearTimeout(ENGINE.cycleTimer);
     ENGINE.cycleTimer = setTimeout(() => {
       if (ENGINE.state !== 'paused') {
-        try { ENGINE.modules.detector.scan(); }
-        catch (error) { reportError('Erreur pendant la détection', error); }
+        try {
+          const cells = ENGINE.modules.detector.scan();
+          if (Array.isArray(cells) && cells.length === 0) ENGINE.overlay.setCells([]);
+        } catch (error) { reportError('Erreur pendant la détection', error); }
         scheduleNextScan();
       }
     }, ENGINE.config.scanInterval);
@@ -123,7 +125,7 @@
     try {
       const cells = detector.forceScan();
       if (Array.isArray(cells) && cells.length) handleDetectedCells(cells);
-      else if (!ENGINE.overlay.cells.length) ENGINE.overlay.setCells([]);
+      else ENGINE.overlay.setCells([]);
       return Array.isArray(cells) ? cells : [];
     } catch (error) {
       reportError('Impossible d’actualiser la détection', error);
@@ -168,6 +170,7 @@
     clearTimeout(ENGINE.cycleTimer);
     ENGINE.cycleTimer = null;
     ENGINE.overlay.setRunning(false);
+    ENGINE.overlay.setPaused(true);
     ENGINE.overlay.setStatus('Analyse en pause', 'paused');
   }
 
@@ -175,6 +178,7 @@
     if (ENGINE.state !== 'paused') return;
     ENGINE.state = 'searching';
     ENGINE.overlay.setRunning(false);
+    ENGINE.overlay.setPaused(false);
     refreshDetection();
     scheduleNextScan();
   }
