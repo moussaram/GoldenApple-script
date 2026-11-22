@@ -96,7 +96,13 @@ class AppleAnalyzer {
         if (this.onAnalyze) {
             this.onAnalyze(analysis);
         }
-if (this.engine.config.debug) {
+
+        // Conserver la transmission historique vers le background si disponible.
+        if (window.__engine && typeof window.__engine.sendAnalysis === 'function') {
+            window.__engine.sendAnalysis(analysis);
+        }
+
+        if (this.engine.config.debug) {
             console.log(`[Analyzer] Phase ${analysis.phase}: ${analysis.appleCells.length} pommes, ${analysis.bittenCells.length} mordues`);
         }
 
