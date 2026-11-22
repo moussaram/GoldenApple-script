@@ -1,373 +1,245 @@
-// content.js - Point d'entrée du moteur dans la page
-// Orchestre analyzer.js, detector.js, predictor.js
+// content.js — contrôleur local GoldenApple pour Kiwi Browser
+// Raccorde les moteurs existants à l'overlay sans backend ni application externe.
+(function () {
+  'use strict';
 
-(function() {
-    'use strict';
+  if (window.__GOLDENAPPLE_INITIALIZED__) return;
+  window.__GOLDENAPPLE_INITIALIZED__ = true;
 
-    const ENGINE = {
-        initialized: false,
-        state: 'idle', // idle | scanning | analyzing | paused
-        platform: null,
-        tabId: null,
-        currentRound: null,
-        modules: {
-            analyzer: null,
-            detector: null,
-            predictor: null
-        },
-        config: {
-            scanInterval: 200,
-            confidenceThreshold: 0.6,
-            autoAnalyze: true,
-            debug: false
-        },
-        metrics: {
-            startTime: null,
-            roundsAnalyzed: 0,
-            cellsFound: 0,
-            predictionsMade: 0
-        },
-        cycleTimer: null
+  const ENGINE = {
+    initialized: false,
+    state: 'initializing',
+    platform: 'unknown',
+    modules: { analyzer: null, detector: null, predictor: null },
+    overlay: null,
+    config: {
+      scanInterval: 500,
+      confidenceThreshold: 0.6,
+      autoAnalyze: false,
+      debug: false
+    },
+    metrics: {
+      startTime: Date.now(),
+      roundsAnalyzed: 0,
+      cellsFound: 0,
+      predictionsMade: 0
+    },
+    cycleTimer: null,
+    lastAnalysis: null,
+    lastPrediction: null
+  };
+
+  function detectPlatform() {
+    const hostname = location.hostname.toLowerCase();
+    if (hostname.includes('1xbet')) return '1xbet';
+    if (hostname.includes('melbet')) return 'melbet';
+    if (hostname.includes('winwin')) return 'winwin';
+    if (hostname.includes('megapari')) return 'megapari';
+    if (hostname.includes('1xgame')) return '1xgame';
+    if (hostname.includes('1xslot')) return '1xslot';
+    if (location.pathname.toLowerCase().includes('apple-of-fortune') ||
+        document.querySelector('[class*="apple-fortune" i], [class*="apple_of_fortune" i], .game-apple')) {
+      return 'generic_apple';
+    }
+    return 'unknown';
+  }
+
+  function wrapCallback(target, property, callback) {
+    const previous = target[property];
+    target[property] = function (...args) {
+      if (typeof previous === 'function') {
+        try { previous.apply(this, args); }
+        catch (error) { console.warn('[GoldenApple] Callback précédent en erreur:', error); }
+      }
+      callback(...args);
     };
+  }
 
-    // ==========================================
-    // INITIALISATION
-    // ==========================================
-
-    function init() {
-        if (ENGINE.initialized) return;
-        
-        console.log('[Engine] Initialisation du moteur...');
-        ENGINE.metrics.startTime = Date.now();
-        
-        // Détecter la plateforme
-        ENGINE.platform = detectPlatform();
-        ENGINE.tabId = getTabId();
-        
-        // Initialiser les modules
-        ENGINE.modules.analyzer = new AppleAnalyzer(ENGINE);
-        ENGINE.modules.detector = new AppleDetector(ENGINE);
-        ENGINE.modules.predictor = new ApplePredictor(ENGINE);
-        
-        // Lier les modules entre eux
-        linkModules();
-        
-        // Écouter les commandes du background
-        listenBackgroundCommands();
-        
-        // Écouter les events de la page
-        listenPageEvents();
-        
-        ENGINE.initialized = true;
-        ENGINE.state = 'scanning';
-        
-        // Signaler au background que le moteur est prêt
-        sendToBackground({
-            type: 'ENGINE_STATUS',
-            payload: {
-                state: ENGINE.state,
-                platform: ENGINE.platform,
-                tabId: ENGINE.tabId,
-                version: '2.0.0'
-            }
-        });
-
-        // Démarrer le cycle d'analyse
-        startAnalysisCycle();
-
-        console.log(`[Engine] ✓ Moteur prêt | Platform: ${ENGINE.platform} | Tab: ${ENGINE.tabId}`);
-    }
-
-    // ==========================================
-    // DÉTECTION PLATEFORME
-    // ==========================================
-
-    function detectPlatform() {
-        const hostname = window.location.hostname;
-        
-        if (hostname.includes('1xbet')) return '1xbet';
-        if (hostname.includes('melbet')) return 'melbet';
-        if (hostname.includes('winwin') || hostname === 'winwin-17094.pro') return 'winwin';
-        if (hostname.includes('megapari')) return 'megapari';
-        if (hostname.includes('1xgame')) return '1xgame';
-        if (hostname.includes('1xslot')) return '1xslot';
-        
-        // Détection par patterns génériques
-        if (
-            window.location.pathname.includes('apple-of-fortune') ||
-            document.querySelector('[class*="apple-fortune" i], [class*="apple_of_fortune" i], .game-apple')
-        ) {
-            return 'generic_apple';
+  function normalizeDetectedCells(cells) {
+    if (!Array.isArray(cells)) return [];
+    const detector = ENGINE.modules.detector;
+    return cells.map(cell => {
+      if (!cell || cell.elementRef) return cell;
+      // handleUserClick() expose une analyse sans elementRef ; le Detector
+      // conserve la référence dans revealedCells. On la récupère sans toucher
+      // à son algorithme ni à ses sélecteurs.
+      if (detector?.revealedCells instanceof Map) {
+        for (const [element, analysis] of detector.revealedCells.entries()) {
+          if (analysis === cell && element?.isConnected && element.ownerDocument === document) {
+            return { ...cell, elementRef: element };
+          }
         }
-        
-        return 'unknown';
+      }
+      return cell;
+    });
+  }
+
+  function handleDetectedCells(cells) {
+    const safeCells = normalizeDetectedCells(cells);
+    ENGINE.metrics.cellsFound = safeCells.length;
+    ENGINE.overlay?.setCells(safeCells);
+    ENGINE.modules.analyzer?.feedCells(safeCells);
+  }
+
+  function handleAnalysis(result) {
+    if (!result) return;
+    ENGINE.metrics.roundsAnalyzed++;
+    ENGINE.lastAnalysis = result;
+  }
+
+  function handlePrediction(result) {
+    if (!result) return;
+    ENGINE.metrics.predictionsMade++;
+    ENGINE.lastPrediction = result;
+    // Les recommandations du Predictor restent des données statistiques :
+    // elles ne sont jamais converties en marqueurs d'observation.
+  }
+
+  function connectExistingCallbacks() {
+    const { detector, analyzer, predictor } = ENGINE.modules;
+    wrapCallback(detector, 'onDetect', handleDetectedCells);
+    wrapCallback(analyzer, 'onAnalyze', result => {
+      handleAnalysis(result);
+      predictor.feedAnalysis(result);
+    });
+    wrapCallback(predictor, 'onPredict', handlePrediction);
+  }
+
+  function scheduleNextScan() {
+    if (ENGINE.state === 'paused' || !ENGINE.initialized) return;
+    clearTimeout(ENGINE.cycleTimer);
+    ENGINE.cycleTimer = setTimeout(() => {
+      if (ENGINE.state !== 'paused') {
+        try { ENGINE.modules.detector.scan(); }
+        catch (error) { reportError('Erreur pendant la détection', error); }
+        scheduleNextScan();
+      }
+    }, ENGINE.config.scanInterval);
+  }
+
+  function refreshDetection() {
+    const detector = ENGINE.modules.detector;
+    if (!detector) return [];
+    try {
+      const cells = detector.forceScan();
+      if (Array.isArray(cells) && cells.length) handleDetectedCells(cells);
+      else if (!ENGINE.overlay.cells.length) ENGINE.overlay.setCells([]);
+      return Array.isArray(cells) ? cells : [];
+    } catch (error) {
+      reportError('Impossible d’actualiser la détection', error);
+      return [];
+    }
+  }
+
+  function startAnalysis() {
+    if (!ENGINE.initialized || ENGINE.state === 'analyzing' || ENGINE.state === 'paused') return;
+    ENGINE.state = 'analyzing';
+    ENGINE.overlay.setRunning(true);
+    try {
+      const cells = refreshDetection();
+      if (cells.length) ENGINE.modules.analyzer.feedCells(normalizeDetectedCells(cells));
+      if (!ENGINE.modules.analyzer.hasData()) {
+        ENGINE.state = 'searching';
+        ENGINE.overlay.setRunning(false);
+        ENGINE.overlay.setStatus('Aucune grille exploitable détectée', 'searching');
+        return;
+      }
+      const result = ENGINE.modules.analyzer.runAnalysis();
+      if (!result) {
+        ENGINE.state = 'searching';
+        ENGINE.overlay.setRunning(false);
+        ENGINE.overlay.setStatus('Analyse impossible — grille incomplète', 'searching');
+        return;
+      }
+      ENGINE.state = 'ready';
+      ENGINE.overlay.setRunning(false);
+      ENGINE.overlay.setStatus('Analyse terminée', 'ready');
+      if (ENGINE.config.debug) console.log('[GoldenApple] Analyse locale terminée', result);
+    } catch (error) {
+      ENGINE.state = 'error';
+      ENGINE.overlay.setRunning(false);
+      reportError('Erreur pendant l’analyse', error);
+    }
+  }
+
+  function pauseAnalysis() {
+    if (ENGINE.state === 'paused') return;
+    ENGINE.state = 'paused';
+    clearTimeout(ENGINE.cycleTimer);
+    ENGINE.cycleTimer = null;
+    ENGINE.overlay.setRunning(false);
+    ENGINE.overlay.setStatus('Analyse en pause', 'paused');
+  }
+
+  function resumeAnalysis() {
+    if (ENGINE.state !== 'paused') return;
+    ENGINE.state = 'searching';
+    ENGINE.overlay.setRunning(false);
+    refreshDetection();
+    scheduleNextScan();
+  }
+
+  function reportError(message, error) {
+    console.error('[GoldenApple]', message, error);
+    ENGINE.overlay?.setRunning(false);
+    ENGINE.overlay?.setStatus(message, 'error');
+  }
+
+  function init() {
+    if (ENGINE.initialized) return;
+
+    const required = ['AppleAnalyzer', 'AppleDetector', 'ApplePredictor', 'GoldenAppleOverlay'];
+    const missing = required.filter(name => typeof window[name] !== 'function');
+    if (missing.length) {
+      console.error('[GoldenApple] Modules indisponibles :', missing);
+      return;
     }
 
-    function getTabId() {
-        try {
-            const url = new URL(window.location.href);
-            return url.pathname + url.search;
-        } catch(e) {
-            return 'unknown';
-        }
-    }
+    ENGINE.platform = detectPlatform();
+    try {
+      // Signatures vérifiées dans les fichiers réels : chaque constructeur reçoit ENGINE.
+      ENGINE.modules.analyzer = new window.AppleAnalyzer(ENGINE);
+      ENGINE.modules.detector = new window.AppleDetector(ENGINE);
+      ENGINE.modules.predictor = new window.ApplePredictor(ENGINE);
 
-    // ==========================================
-    // LIER LES MODULES
-    // ==========================================
+      ENGINE.overlay = new window.GoldenAppleOverlay({
+        onAnalyze: startAnalysis,
+        onRefresh: refreshDetection,
+        onPause: pauseAnalysis,
+        onResume: resumeAnalysis
+      });
+      ENGINE.overlay.setPlatform(ENGINE.platform);
 
-    function linkModules() {
-        const { analyzer, detector, predictor } = ENGINE.modules;
+      connectExistingCallbacks();
+      ENGINE.initialized = true;
+      ENGINE.state = 'searching';
+      ENGINE.overlay.setStatus('Recherche des éléments du jeu...', 'searching');
 
-        // Quand le détecteur trouve des cellules → les envoyer à l'analyseur
-        detector.onDetect = (cells) => {
-            sendCellsDetected(cells);
-            analyzer.feedCells(cells);
-        };
+      refreshDetection();
+      scheduleNextScan();
 
-        // Quand l'analyseur a fini d'analyser → envoyer au prédicteur
-        analyzer.onAnalyze = (analysis) => {
-            predictor.feedAnalysis(analysis);
-        };
-
-        // Quand le prédicteur fait une prédiction → l'envoyer au background
-        predictor.onPredict = (prediction) => {
-            sendPrediction(prediction);
-        };
-
-        // Cycle complet
-        detector.onDetectComplete = () => {
-            if (analyzer.hasData()) {
-                analyzer.runAnalysis();
-            }
-        };
-    }
-
-    // ==========================================
-    // COMMUNICATION BACKGROUND
-    // ==========================================
-
-    function listenBackgroundCommands() {
-        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-            switch (message.type) {
-                case 'ENGINE_COMMAND':
-                    handleCommand(message.command, message.params);
-                    sendResponse({ received: true, state: ENGINE.state });
-                    break;
-
-                case 'TAB_CHANGED':
-                    if (message.platform) {
-                        ENGINE.platform = message.platform;
-                        ENGINE.state = 'scanning';
-                    }
-                    sendResponse({ received: true });
-                    break;
-
-                case 'START_ANALYSIS':
-                    ENGINE.state = 'analyzing';
-                    startAnalysisCycle();
-                    sendResponse({ received: true });
-                    break;
-
-                case 'STOP_ANALYSIS':
-                    ENGINE.state = 'paused';
-                    stopAnalysisCycle();
-                    sendResponse({ received: true });
-                    break;
-            }
-            return true;
-        });
-    }
-
-    function listenPageEvents() {
-        // Écouter les mutations du DOM
-        const observer = new MutationObserver((mutations) => {
-            if (ENGINE.state === 'paused') return;
-            
-            for (const mutation of mutations) {
-                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                    ENGINE.modules.detector.scheduleScan();
-                    break;
-                }
-                if (mutation.type === 'attributes') {
-                    ENGINE.modules.detector.scheduleScan();
-                    break;
-                }
-            }
-        });
-
-        observer.observe(document.body || document.documentElement, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['class', 'style', 'data-state', 'data-cell']
-        });
-
-        // Écouter les clics (mises du joueur)
-        document.addEventListener('click', (e) => {
-            if (ENGINE.state === 'analyzing' || ENGINE.state === 'scanning') {
-                const cell = e.target.closest('[class*="apple" i], [class*="cell" i], [class*="grid" i], [class*="tile" i], [role="button"]');
-                if (cell) {
-                    ENGINE.modules.detector.handleUserClick(cell);
-                }
-            }
-        }, true);
-    }
-
-    function handleCommand(command, params) {
-        switch (command) {
-            case 'START_ANALYSIS':
-                ENGINE.state = 'analyzing';
-                ENGINE.modules.detector.forceScan();
-                break;
-
-            case 'STOP_ANALYSIS':
-                ENGINE.state = 'paused';
-                stopAnalysisCycle();
-                break;
-
-            case 'RESUME_ANALYSIS':
-                ENGINE.state = 'scanning';
-                startAnalysisCycle();
-                break;
-
-            case 'FORCE_SCAN':
-                ENGINE.modules.detector.forceScan();
-                break;
-
-            case 'SET_CONFIG':
-                if (params) Object.assign(ENGINE.config, params);
-                break;
-
-            case 'RESET':
-                ENGINE.metrics = {
-                    startTime: Date.now(),
-                    roundsAnalyzed: 0,
-                    cellsFound: 0,
-                    predictionsMade: 0
-                };
-                ENGINE.modules.predictor.reset();
-                ENGINE.modules.analyzer.reset();
-                break;
-        }
-    }
-
-    // ==========================================
-    // CYCLE D'ANALYSE
-    // ==========================================
-
-    function startAnalysisCycle() {
-        if (ENGINE.state === 'paused') return;
-        if (ENGINE.cycleTimer) return;
-
-        const cycle = () => {
-            if (ENGINE.state === 'paused') {
-                ENGINE.cycleTimer = null;
-                return;
-            }
-
-            ENGINE.modules.detector.scan();
-            
-            ENGINE.cycleTimer = setTimeout(cycle, ENGINE.config.scanInterval);
-        };
-
-        cycle();
-    }
-
-    function stopAnalysisCycle() {
-        if (ENGINE.cycleTimer) {
-            clearTimeout(ENGINE.cycleTimer);
-            ENGINE.cycleTimer = null;
-        }
-    }
-
-    // ==========================================
-    // ENVOI DES RÉSULTATS
-    // ==========================================
-
-    function sendToBackground(message) {
-        try {
-            chrome.runtime.sendMessage(message);
-        } catch (e) {
-            // Content script detached
-        }
-    }
-
-    function sendPrediction(prediction) {
-        ENGINE.metrics.predictionsMade++;
-        
-        sendToBackground({
-            type: 'PREDICTION_READY',
-            payload: {
-                ...prediction,
-                platform: ENGINE.platform,
-                tabId: ENGINE.tabId,
-                round: ENGINE.currentRound,
-                metrics: { ...ENGINE.metrics }
-            }
-        });
-
-        if (ENGINE.config.debug) {
-            console.log('[Engine] Prédiction envoyée:', prediction);
-        }
-    }
-
-    function sendCellsDetected(cells) {
-        if (!cells || cells.length === 0) return;
-
-        ENGINE.metrics.cellsFound = cells.length;
-
-        sendToBackground({
-            type: 'CELLS_DETECTED',
-            payload: {
-                cells,
-                appleCells: cells.filter(cell => cell.type === 'apple_cell'),
-                bittenCells: cells.filter(cell => cell.type === 'apple_bited_cell'),
-                platform: ENGINE.platform,
-                tabId: ENGINE.tabId,
-                round: ENGINE.currentRound,
-                metrics: { ...ENGINE.metrics }
-            }
-        });
-    }
-
-    function sendAnalysis(data) {
-        ENGINE.metrics.roundsAnalyzed++;
-        
-        sendToBackground({
-            type: 'ANALYSIS_RESULT',
-            payload: {
-                ...data,
-                platform: ENGINE.platform,
-                tabId: ENGINE.tabId,
-                metrics: { ...ENGINE.metrics }
-            }
-        });
-    }
-
-    // ==========================================
-    // API PUBLIQUE POUR analyzer/detector/predictor
-    // ==========================================
-
-    window.__engine = {
-        sendToBackground,
-        sendAnalysis,
-        sendCellsDetected,
-        sendPrediction,
-        getState: () => ({ ...ENGINE.state }),
+      window.GoldenAppleEngine = {
+        start: startAnalysis,
+        pause: pauseAnalysis,
+        resume: resumeAnalysis,
+        refresh: refreshDetection,
+        getState: () => ENGINE.state,
+        getPlatform: () => ENGINE.platform,
         getMetrics: () => ({ ...ENGINE.metrics }),
-        getConfig: () => ({ ...ENGINE.config }),
-        getPlatform: () => ENGINE.platform
-    };
+        getLastAnalysis: () => ENGINE.lastAnalysis,
+        getLastPrediction: () => ENGINE.lastPrediction
+      };
 
-    // ==========================================
-    // DÉMARRAGE
-    // ==========================================
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
+      console.log('[GoldenApple] Moteur autonome initialisé sur', ENGINE.platform);
+    } catch (error) {
+      reportError('Initialisation impossible', error);
     }
+  }
 
+  function boot() {
+    if (document.documentElement) init();
+    else requestAnimationFrame(boot);
+  }
+
+  boot();
 })();
