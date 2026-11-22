@@ -1,0 +1,81 @@
+.ga-panel {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  width: min(285px, calc(100vw - 24px));
+  background: #101923;
+  color: #f4f7fb;
+  border: 1px solid #293b4e;
+  border-radius: 13px;
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.4);
+  pointer-events: auto;
+  overflow: hidden;
+}
+.ga-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: #172431;
+  cursor: move;
+  touch-action: none;
+}
+.ga-brand { display: flex; align-items: center; gap: 10px; }
+.ga-brand strong, .ga-brand small { display: block; }
+.ga-brand strong { font-size: 14px; }
+.ga-brand small { color: #91a3b7; margin-top: 3px; font-size: 10px; }
+.ga-logo {
+  width: 32px; height: 32px; display: grid; place-items: center;
+  border-radius: 9px; background: #00c875; color: #07150e;
+  font-size: 19px; font-weight: bold;
+}
+.ga-minimize {
+  width: 29px; height: 29px; border: 0; border-radius: 7px;
+  background: #263849; color: white; font-size: 19px;
+}
+.ga-body { padding: 12px; }
+.ga-status {
+  display: flex; align-items: center; gap: 8px; padding: 9px;
+  background: #192b36; border-radius: 7px; font-size: 11px;
+}
+.ga-indicator { width: 9px; height: 9px; border-radius: 50%; background: #e5a52e; }
+.ga-indicator.ready { background: #00d47b; box-shadow: 0 0 8px #00d47b; }
+.ga-indicator.running { background: #3ba5ff; box-shadow: 0 0 8px #3ba5ff; }
+.ga-indicator.error { background: #ff405d; }
+.ga-indicator.paused { background: #e5a52e; }
+.ga-info { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.ga-info > div { padding: 9px; background: #192531; border-radius: 7px; }
+.ga-info small, .ga-info strong { display: block; }
+.ga-info small { color: #8fa1b5; font-size: 10px; }
+.ga-info strong { margin-top: 5px; font-size: 13px; }
+.ga-actions { display: grid; gap: 7px; margin-top: 12px; }
+.ga-actions button {
+  width: 100%; min-height: 36px; padding: 9px; border: 0;
+  border-radius: 7px; font-weight: bold; font-size: 11px; cursor: pointer;
+}
+.ga-primary { background: #00c875; color: #07150e; }
+.ga-primary:disabled { opacity: .4; cursor: not-allowed; }
+.ga-secondary { background: #263849; color: #f4f7fb; }
+.ga-legend { display: grid; gap: 7px; margin-top: 12px; color: #c1cfdd; font-size: 10px; }
+.ga-legend span { display: flex; align-items: center; gap: 7px; }
+.ga-dot {
+  width: 13px; height: 13px; border-radius: 50%; display: inline-block;
+  flex-shrink: 0; border: 2px solid white; box-shadow: 0 1px 5px rgba(0,0,0,.65);
+}
+.ga-dot.green { background: #00d879; }
+.ga-dot.red { background: #ff304f; }
+.ga-footer { display: block; text-align: center; color: #91a3b7; margin-top: 12px; font-size: 9px; line-height: 1.4; }
+.ga-marker-layer {
+  position: fixed; inset: 0; pointer-events: none; overflow: visible;
+}
+.ga-cell-marker {
+  position: fixed; display: flex; align-items: center; justify-content: center;
+  transform: translate(-50%, -50%); pointer-events: none;
+}
+.ga-cell-marker .ga-dot { width: 17px; height: 17px; }
+@media (max-width: 360px) {
+  .ga-panel { width: min(250px, calc(100vw - 20px)); }
+  .ga-header, .ga-body { padding: 9px; }
+}
