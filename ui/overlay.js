@@ -138,7 +138,8 @@
       const count = this.shadow?.getElementById('ga-count');
       const markable = this.detectedCells.filter(cell => this.isMarkableCell(cell));
       if (count) count.textContent = String(markable.length);
-      if (markable.length) this.setStatus('GoldenApple actif — Jeu détecté', 'ready');
+      if (this.running) this.setStatus('Analyse en cours...', 'running');
+      else if (markable.length) this.setStatus('GoldenApple actif — Jeu détecté', 'ready');
       else if (this.detectedCells.length) this.setStatus('Éléments repérés — grille à confirmer', 'searching');
       else this.setStatus('Recherche des éléments du jeu...', 'searching');
       this.renderMarkers();
