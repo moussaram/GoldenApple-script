@@ -124,8 +124,10 @@
     if (!detector) return [];
     try {
       const cells = detector.forceScan();
-      if (Array.isArray(cells) && cells.length) handleDetectedCells(cells);
-      else ENGINE.overlay.setCells([]);
+      if (!Array.isArray(cells) || cells.length === 0) {
+        ENGINE.metrics.cellsFound = 0;
+        ENGINE.overlay.setCells([]);
+      }
       return Array.isArray(cells) ? cells : [];
     } catch (error) {
       reportError('Impossible d’actualiser la détection', error);
@@ -139,8 +141,7 @@
     ENGINE.overlay.setRunning(true);
     try {
       const cells = refreshDetection();
-      if (cells.length) ENGINE.modules.analyzer.feedCells(normalizeDetectedCells(cells));
-      if (!ENGINE.modules.analyzer.hasData()) {
+      if (!cells.length || !ENGINE.modules.analyzer.hasData()) {
         ENGINE.state = 'searching';
         ENGINE.overlay.setRunning(false);
         ENGINE.overlay.setStatus('Aucune grille exploitable détectée', 'searching');
