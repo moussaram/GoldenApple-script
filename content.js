@@ -93,6 +93,29 @@
     };
   }
 
+  function syncOverlayDetection(cells) {
+    const safeCells = normalizeDetectedCells(Array.isArray(cells) ? cells : []);
+    if (!safeCells.length) {
+      if (ENGINE.lastDetectedCells.length) {
+        ENGINE.lastDetectedCells = [];
+        ENGINE.overlay?.setDetectedCells([]);
+        ENGINE.overlay?.setAnalysis(null);
+        ENGINE.overlay?.setPrediction(null);
+      }
+      return;
+    }
+    const previous = ENGINE.lastDetectedCells;
+    const changed = safeCells.length !== previous.length ||
+      safeCells.some(cell => !previous.some(old =>
+        old.elementRef === cell.elementRef && old.row === cell.row &&
+        old.col === cell.col && old.type === cell.type
+      ));
+    if (changed) {
+      ENGINE.lastDetectedCells = safeCells;
+      ENGINE.overlay?.setDetectedCells(safeCells);
+    }
+  }
+
   function refreshScan() {
     const detector = ENGINE.modules.detector;
     if (!detector) return [];
@@ -150,8 +173,12 @@
     ENGINE.state = 'scanning';
     const cycle = () => {
       if (ENGINE.state === 'paused') { ENGINE.cycleTimer = null; return; }
-      try { ENGINE.modules.detector.scan(); }
-      catch (error) { console.error('[GoldenApple] Scan automatique:', error); }
+      try {
+        const cells = ENGINE.modules.detector.scan();
+        syncOverlayDetection(cells);
+      } catch (error) {
+        console.error('[GoldenApple] Scan automatique:', error);
+      }
       ENGINE.cycleTimer = setTimeout(cycle, ENGINE.config.scanInterval);
     };
     cycle();
