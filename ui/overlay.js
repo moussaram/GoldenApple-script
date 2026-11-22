@@ -24,6 +24,7 @@
       this.cells = [];
       this.visible = true;
       this.running = false;
+      this.paused = false;
       this.gameDetected = false;
       this.animationFrame = null;
       this.status = 'Recherche du jeu...';
@@ -117,14 +118,17 @@
       });
       get('ga-refresh').addEventListener('click', () => this.onRefresh());
       get('ga-pause').addEventListener('click', () => {
-        if (this.running) this.onPause();
-        else this.onResume();
+        if (this.paused) this.onResume();
+        else this.onPause();
       });
       get('ga-markers').addEventListener('click', () => {
         this.visible = !this.visible;
         this.markerLayer.style.display = this.visible ? 'block' : 'none';
         get('ga-markers').textContent = this.visible ? 'MASQUER LES SIGNAUX' : 'AFFICHER LES SIGNAUX';
-        if (this.visible) this.updatePositions();
+        if (this.visible) {
+          this.updatePositions();
+          this.startPositionLoop();
+        }
       });
       get('ga-minimize').addEventListener('click', () => {
         const body = get('ga-body');
@@ -179,12 +183,20 @@
       if (element) element.textContent = platform || 'Inconnue';
     }
 
+    setPaused(paused) {
+      this.paused = Boolean(paused);
+      const button = this.shadow?.getElementById('ga-pause');
+      const analyzeButton = this.shadow?.getElementById('ga-analyze');
+      if (button) button.textContent = this.paused ? 'REPRENDRE' : 'METTRE EN PAUSE';
+      if (analyzeButton) analyzeButton.disabled = !this.gameDetected || this.running || this.paused;
+    }
+
     setRunning(running) {
       this.running = Boolean(running);
       const button = this.shadow?.getElementById('ga-pause');
       const analyzeButton = this.shadow?.getElementById('ga-analyze');
-      if (button) button.textContent = this.running ? 'METTRE EN PAUSE' : 'REPRENDRE';
-      if (analyzeButton) analyzeButton.disabled = !this.gameDetected || this.running;
+      if (button) button.textContent = this.paused ? 'REPRENDRE' : 'METTRE EN PAUSE';
+      if (analyzeButton) analyzeButton.disabled = !this.gameDetected || this.running || this.paused;
       if (this.running) this.setStatus('Analyse en cours...', 'running');
     }
 
