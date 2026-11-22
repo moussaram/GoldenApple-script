@@ -96,13 +96,7 @@ class AppleAnalyzer {
         if (this.onAnalyze) {
             this.onAnalyze(analysis);
         }
-
-        // Envoyer au background
-        if (window.__engine) {
-            window.__engine.sendAnalysis(analysis);
-        }
-
-        if (this.engine.config.debug) {
+if (this.engine.config.debug) {
             console.log(`[Analyzer] Phase ${analysis.phase}: ${analysis.appleCells.length} pommes, ${analysis.bittenCells.length} mordues`);
         }
 
