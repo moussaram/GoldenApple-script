@@ -13,7 +13,7 @@
     modules: { analyzer: null, detector: null, predictor: null },
     overlay: null,
     config: {
-      scanInterval: 500,
+      scanInterval: 200,
       confidenceThreshold: 0.6,
       autoAnalyze: false,
       debug: false
@@ -25,6 +25,7 @@
       predictionsMade: 0
     },
     cycleTimer: null,
+    observer: null,
     lastAnalysis: null,
     lastPrediction: null
   };
@@ -184,6 +185,41 @@
     scheduleNextScan();
   }
 
+  function installPageListeners() {
+    // Conserver le suivi des interactions du joueur utilisé par Detector.
+    document.addEventListener('click', event => {
+      if (ENGINE.state === 'paused' || ENGINE.state === 'error') return;
+      const target = event.target;
+      if (!target || typeof target.closest !== 'function') return;
+      const cell = target.closest('[class*="apple" i], [class*="cell" i], [class*="grid" i], [class*="tile" i], [role="button"]');
+      if (cell) {
+        try { ENGINE.modules.detector.handleUserClick(cell); }
+        catch (error) { console.warn('[GoldenApple] Échec du suivi du clic:', error); }
+      }
+    }, true);
+
+    // Conserver la détection réactive aux changements du DOM.
+    ENGINE.observer = new MutationObserver(records => {
+      if (ENGINE.state === 'paused') return;
+      const overlayRoot = document.getElementById('goldenapple-overlay-root');
+      const hasPageMutation = records.some(record => {
+        const target = record.target;
+        if (overlayRoot && (target === overlayRoot || overlayRoot.contains(target))) return false;
+        return true;
+      });
+      if (hasPageMutation) ENGINE.modules.detector.scheduleScan();
+    });
+
+    if (document.documentElement) {
+      ENGINE.observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['class', 'style', 'data-state', 'data-cell']
+      });
+    }
+  }
+
   function reportError(message, error) {
     console.error('[GoldenApple]', message, error);
     ENGINE.overlay?.setRunning(false);
@@ -222,6 +258,7 @@
 
       connectExistingCallbacks();
       ENGINE.initialized = true;
+      installPageListeners();
       ENGINE.state = 'searching';
       ENGINE.overlay.setStatus('Recherche des éléments du jeu...', 'searching');
 
