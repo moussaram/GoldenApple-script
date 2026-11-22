@@ -97,8 +97,8 @@ class AppleAnalyzer {
             this.onAnalyze(analysis);
         }
 
-        // Envoyer au background
-        if (window.__engine) {
+        // Conserver la transmission historique vers le background si disponible.
+        if (window.__engine && typeof window.__engine.sendAnalysis === 'function') {
             window.__engine.sendAnalysis(analysis);
         }
 

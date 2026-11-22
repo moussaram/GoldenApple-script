@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Apple of Fortune Engine",
-  "version": "2.0.0",
-  "description": "Moteur d'analyse Apple of Fortune - Communication backend Node.js",
+  "name": "GoldenApple Engine",
+  "version": "2.1.0",
+  "description": "Moteur GoldenApple avec marquage visuel local dans la page du jeu",
   "permissions": [
     "storage",
     "webRequest",
@@ -44,6 +44,7 @@
         "core/analyzer.js",
         "core/detector.js",
         "core/predictor.js",
+        "ui/overlay.js",
         "content.js"
       ],
       "run_at": "document_idle",
@@ -58,9 +59,12 @@
         "communication/pairing.js",
         "communication/sync.js",
         "popup.js",
-        "popup.html"
+        "popup.html",
+        "ui/overlay.css"
       ],
-      "matches": ["<all_urls>"]
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }
