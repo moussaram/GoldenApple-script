@@ -175,7 +175,7 @@
       this.gameDetected = state === 'ready' || state === 'running' || state === 'paused';
 
       const button = this.shadow.getElementById('ga-analyze');
-      if (button) button.disabled = !this.gameDetected || this.running;
+      if (button) button.disabled = !this.gameDetected || this.running || this.paused;
     }
 
     setPlatform(platform) {
