@@ -136,7 +136,8 @@
   }
 
   function runManualAnalysis() {
-    if (!ENGINE.initialized || ENGINE.state === 'paused' || ENGINE.state === 'analyzing') return;
+    if (!ENGINE.initialized || ENGINE.state === 'analyzing') return;
+    const wasPaused = ENGINE.state === 'paused';
     ENGINE.state = 'analyzing';
     ENGINE.overlay?.setRunning(true);
     try {
@@ -144,21 +145,30 @@
       const cells = ENGINE.modules.detector.forceScan();
       ENGINE.manualAnalysis = false;
       if (!Array.isArray(cells) || !cells.length || !ENGINE.modules.analyzer.hasData()) {
-        ENGINE.state = 'scanning';
+        ENGINE.state = wasPaused ? 'paused' : 'scanning';
         ENGINE.overlay?.setRunning(false);
-        ENGINE.overlay?.setStatus('Aucune grille exploitable détectée', 'searching');
+        ENGINE.overlay?.setStatus(
+          wasPaused ? 'Moteur en pause — aucune grille exploitable' : 'Aucune grille exploitable détectée',
+          wasPaused ? 'paused' : 'searching'
+        );
         return;
       }
       const result = ENGINE.modules.analyzer.runAnalysis();
       if (!result) {
-        ENGINE.state = 'scanning';
+        ENGINE.state = wasPaused ? 'paused' : 'scanning';
         ENGINE.overlay?.setRunning(false);
-        ENGINE.overlay?.setStatus('Analyse impossible — grille incomplète', 'searching');
+        ENGINE.overlay?.setStatus(
+          wasPaused ? 'Moteur en pause — analyse impossible' : 'Analyse impossible — grille incomplète',
+          wasPaused ? 'paused' : 'searching'
+        );
         return;
       }
-      ENGINE.state = 'scanning';
+      ENGINE.state = wasPaused ? 'paused' : 'scanning';
       ENGINE.overlay?.setRunning(false);
-      ENGINE.overlay?.setStatus('Analyse terminée — GoldenApple actif', 'ready');
+      ENGINE.overlay?.setStatus(
+        wasPaused ? 'Analyse terminée — moteur en pause' : 'Analyse terminée — GoldenApple actif',
+        wasPaused ? 'paused' : 'ready'
+      );
     } catch (error) {
       ENGINE.manualAnalysis = false;
       ENGINE.state = 'scanning';
