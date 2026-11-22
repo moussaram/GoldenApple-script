@@ -171,7 +171,7 @@
       );
     } catch (error) {
       ENGINE.manualAnalysis = false;
-      ENGINE.state = 'scanning';
+      ENGINE.state = wasPaused ? 'paused' : 'scanning';
       ENGINE.overlay?.setRunning(false);
       ENGINE.overlay?.setStatus('Erreur pendant l’analyse', 'error');
       console.error('[GoldenApple] Analyse manuelle:', error);
