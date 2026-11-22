@@ -193,8 +193,13 @@
   function init() {
     if (ENGINE.initialized) return;
 
-    const required = ['AppleAnalyzer', 'AppleDetector', 'ApplePredictor', 'GoldenAppleOverlay'];
-    const missing = required.filter(name => typeof window[name] !== 'function');
+    // Les classes des moteurs sont déclarées au niveau global lexical dans leurs fichiers.
+    // Elles ne sont pas nécessairement des propriétés de window.
+    const missing = [];
+    if (typeof AppleAnalyzer !== 'function') missing.push('AppleAnalyzer');
+    if (typeof AppleDetector !== 'function') missing.push('AppleDetector');
+    if (typeof ApplePredictor !== 'function') missing.push('ApplePredictor');
+    if (typeof window.GoldenAppleOverlay !== 'function') missing.push('GoldenAppleOverlay');
     if (missing.length) {
       console.error('[GoldenApple] Modules indisponibles :', missing);
       return;
@@ -203,9 +208,9 @@
     ENGINE.platform = detectPlatform();
     try {
       // Signatures vérifiées dans les fichiers réels : chaque constructeur reçoit ENGINE.
-      ENGINE.modules.analyzer = new window.AppleAnalyzer(ENGINE);
-      ENGINE.modules.detector = new window.AppleDetector(ENGINE);
-      ENGINE.modules.predictor = new window.ApplePredictor(ENGINE);
+      ENGINE.modules.analyzer = new AppleAnalyzer(ENGINE);
+      ENGINE.modules.detector = new AppleDetector(ENGINE);
+      ENGINE.modules.predictor = new ApplePredictor(ENGINE);
 
       ENGINE.overlay = new window.GoldenAppleOverlay({
         onAnalyze: startAnalysis,
