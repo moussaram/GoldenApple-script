@@ -165,7 +165,7 @@
     }
 
     isMarkableCell(cell) {
-      if (!cell || !['apple_cell', 'apple_bited_cell'].includes(cell.type)) return false;
+      if (!cell) return false;
       const el = cell.elementRef;
       const pos = cell.gridPosition;
       if (!el || el.nodeType !== 1 || !el.isConnected || el.ownerDocument !== document) return false;
