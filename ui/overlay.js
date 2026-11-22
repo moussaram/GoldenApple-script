@@ -1,110 +1,76 @@
 /**
- * GoldenApple Overlay
- * Interface locale intégrée directement dans la page du jeu.
- * Les marqueurs ne sont posés que sur des cellules DOM réelles
- * disposant d'une référence et de coordonnées de grille fiables.
+ * GoldenApple — interface et marqueurs visuels intégrés à la page du jeu.
+ * Les signaux sont ancrés sur des éléments DOM réels et des positions validées.
  */
 (function () {
   'use strict';
-
   if (window.GoldenAppleOverlay) return;
 
   class GoldenAppleOverlay {
     constructor(options = {}) {
       this.onAnalyze = options.onAnalyze || (() => {});
       this.onRefresh = options.onRefresh || (() => {});
-      this.onPause = options.onPause || (() => {});
-      this.onResume = options.onResume || (() => {});
-
       this.root = null;
       this.shadow = null;
       this.panel = null;
       this.markerLayer = null;
       this.markers = new Map();
-      this.cells = [];
+      this.detectedCells = [];
+      this.analysis = null;
+      this.prediction = null;
       this.visible = true;
       this.running = false;
-      this.paused = false;
       this.gameDetected = false;
       this.animationFrame = null;
-      this.status = 'Recherche du jeu...';
-
       this.create();
     }
 
     create() {
       if (this.root || !document.documentElement) return;
-
       this.root = document.createElement('div');
       this.root.id = 'goldenapple-overlay-root';
       Object.assign(this.root.style, {
-        position: 'fixed',
-        inset: '0',
-        width: '100%',
-        height: '100%',
-        zIndex: '2147483646',
-        pointerEvents: 'none'
+        position: 'fixed', inset: '0', width: '100%', height: '100%',
+        zIndex: '2147483646', pointerEvents: 'none'
       });
-
       this.shadow = this.root.attachShadow({ mode: 'open' });
-
-      const stylesheet = document.createElement('link');
-      stylesheet.rel = 'stylesheet';
-      stylesheet.href = chrome.runtime.getURL('ui/overlay.css');
-      this.shadow.appendChild(stylesheet);
+      const css = document.createElement('link');
+      css.rel = 'stylesheet';
+      css.href = chrome.runtime.getURL('ui/overlay.css');
+      this.shadow.appendChild(css);
 
       const template = document.createElement('template');
-      template.innerHTML = `
-        <div class="ga-panel" id="ga-panel">
-          <div class="ga-header" id="ga-drag">
-            <div class="ga-brand">
-              <span class="ga-logo">G</span>
-              <div>
-                <strong>GoldenApple</strong>
-                <small>Apple of Fortune Engine</small>
-              </div>
-            </div>
-            <button class="ga-minimize" id="ga-minimize" aria-label="Réduire">−</button>
-          </div>
-          <div class="ga-body" id="ga-body">
-            <div class="ga-status">
-              <span class="ga-indicator" id="ga-indicator"></span>
-              <span id="ga-status-text">Initialisation...</span>
-            </div>
-            <div class="ga-info">
-              <div>
-                <small>Plateforme</small>
-                <strong id="ga-platform">Recherche...</strong>
-              </div>
-              <div>
-                <small>Cellules observables</small>
-                <strong id="ga-count">0</strong>
-              </div>
-            </div>
-            <div class="ga-actions">
-              <button id="ga-analyze" class="ga-primary" disabled>LANCER L'ANALYSE</button>
-              <button id="ga-refresh" class="ga-secondary">ACTUALISER</button>
-              <button id="ga-pause" class="ga-secondary">METTRE EN PAUSE</button>
-              <button id="ga-markers" class="ga-secondary">MASQUER LES SIGNAUX</button>
-            </div>
-            <div class="ga-legend">
-              <span><i class="ga-dot green"></i> Pomme observée par Detector</span>
-              <span><i class="ga-dot red"></i> Pomme mordue observée</span>
-            </div>
-            <small class="ga-footer">Les recommandations statistiques ne sont pas des observations.</small>
-          </div>
-        </div>
-        <div class="ga-marker-layer" id="ga-markers-layer"></div>
-      `;
-
+      template.innerHTML =
+        '<section class="ga-panel" id="ga-panel" aria-label="GoldenApple">' +
+          '<header class="ga-header" id="ga-drag">' +
+            '<div class="ga-brand"><span class="ga-logo">G</span>' +
+              '<div><strong>GoldenApple</strong><small>Apple of Fortune</small></div></div>' +
+            '<button class="ga-minimize" id="ga-minimize" aria-label="Réduire">−</button>' +
+          '</header>' +
+          '<div class="ga-body" id="ga-body">' +
+            '<div class="ga-status"><span class="ga-indicator" id="ga-indicator"></span>' +
+              '<span id="ga-status-text">Recherche du jeu...</span></div>' +
+            '<div class="ga-info">' +
+              '<div><small>Plateforme</small><strong id="ga-platform">Détection...</strong></div>' +
+              '<div><small>Cellules détectées</small><strong id="ga-count">0</strong></div>' +
+            '</div>' +
+            '<div class="ga-actions">' +
+              '<button id="ga-analyze" class="ga-primary" disabled>ANALYSER</button>' +
+              '<button id="ga-refresh" class="ga-secondary">ACTUALISER</button>' +
+              '<button id="ga-signals" class="ga-secondary">MASQUER LES SIGNAUX</button>' +
+            '</div>' +
+            '<div class="ga-legend">' +
+              '<span><i class="ga-dot green"></i> Recommandation favorable / pomme détectée</span>' +
+              '<span><i class="ga-dot red"></i> Cellule défavorable détectée</span>' +
+            '</div>' +
+          '</div>' +
+        '</section>' +
+        '<div class="ga-marker-layer" id="ga-marker-layer"></div>';
       this.shadow.appendChild(template.content.cloneNode(true));
       document.documentElement.appendChild(this.root);
-
       this.panel = this.shadow.getElementById('ga-panel');
-      this.markerLayer = this.shadow.getElementById('ga-markers-layer');
+      this.markerLayer = this.shadow.getElementById('ga-marker-layer');
       this.bindEvents();
-
-      this.setStatus('Recherche du jeu...', 'searching');
       window.addEventListener('scroll', () => this.updatePositions(), true);
       window.addEventListener('resize', () => this.updatePositions());
       this.startPositionLoop();
@@ -112,19 +78,14 @@
 
     bindEvents() {
       const get = id => this.shadow.getElementById(id);
-
       get('ga-analyze').addEventListener('click', () => {
         if (this.gameDetected && !this.running) this.onAnalyze();
       });
       get('ga-refresh').addEventListener('click', () => this.onRefresh());
-      get('ga-pause').addEventListener('click', () => {
-        if (this.paused) this.onResume();
-        else this.onPause();
-      });
-      get('ga-markers').addEventListener('click', () => {
+      get('ga-signals').addEventListener('click', () => {
         this.visible = !this.visible;
         this.markerLayer.style.display = this.visible ? 'block' : 'none';
-        get('ga-markers').textContent = this.visible ? 'MASQUER LES SIGNAUX' : 'AFFICHER LES SIGNAUX';
+        get('ga-signals').textContent = this.visible ? 'MASQUER LES SIGNAUX' : 'AFFICHER LES SIGNAUX';
         if (this.visible) {
           this.updatePositions();
           this.startPositionLoop();
@@ -138,124 +99,151 @@
       });
 
       const header = get('ga-drag');
-      let startX = 0;
-      let startY = 0;
-      let dragging = false;
-
+      let x = 0, y = 0, dragging = false;
       header.addEventListener('pointerdown', event => {
         if (event.target.closest('button')) return;
-        dragging = true;
-        startX = event.clientX;
-        startY = event.clientY;
+        dragging = true; x = event.clientX; y = event.clientY;
         header.setPointerCapture(event.pointerId);
       });
       header.addEventListener('pointermove', event => {
         if (!dragging) return;
-        const dx = event.clientX - startX;
-        const dy = event.clientY - startY;
+        const dx = event.clientX - x, dy = event.clientY - y;
         const left = parseFloat(this.panel.style.left) || 12;
         const top = parseFloat(this.panel.style.top) || 12;
-        this.panel.style.left = `${Math.max(0, Math.min(innerWidth - 80, left + dx))}px`;
-        this.panel.style.top = `${Math.max(0, Math.min(innerHeight - 50, top + dy))}px`;
-        startX = event.clientX;
-        startY = event.clientY;
+        this.panel.style.left = Math.max(0, Math.min(innerWidth - 90, left + dx)) + 'px';
+        this.panel.style.top = Math.max(0, Math.min(innerHeight - 60, top + dy)) + 'px';
+        x = event.clientX; y = event.clientY;
       });
       header.addEventListener('pointerup', () => { dragging = false; });
       header.addEventListener('pointercancel', () => { dragging = false; });
     }
 
+    setPlatform(platform) {
+      const node = this.shadow?.getElementById('ga-platform');
+      if (node) node.textContent = platform || 'Inconnue';
+    }
+
     setStatus(message, state = 'searching') {
-      this.status = message;
       const text = this.shadow?.getElementById('ga-status-text');
       const indicator = this.shadow?.getElementById('ga-indicator');
-      if (!text || !indicator) return;
-
-      text.textContent = message;
-      indicator.className = `ga-indicator ${state}`;
-      this.gameDetected = state === 'ready' || state === 'running' || state === 'paused';
-
-      const button = this.shadow.getElementById('ga-analyze');
-      if (button) button.disabled = !this.gameDetected || this.running || this.paused;
+      if (text) text.textContent = message;
+      if (indicator) indicator.className = 'ga-indicator ' + state;
+      this.gameDetected = state === 'ready' || state === 'running';
+      const button = this.shadow?.getElementById('ga-analyze');
+      if (button) button.disabled = !this.gameDetected || this.running;
     }
 
-    setPlatform(platform) {
-      const element = this.shadow?.getElementById('ga-platform');
-      if (element) element.textContent = platform || 'Inconnue';
+    setDetectedCells(cells) {
+      this.detectedCells = Array.isArray(cells) ? cells : [];
+      const count = this.shadow?.getElementById('ga-count');
+      const markable = this.detectedCells.filter(cell => this.isMarkableCell(cell));
+      if (count) count.textContent = String(markable.length);
+      if (markable.length) this.setStatus('GoldenApple actif — Jeu détecté', 'ready');
+      else if (this.detectedCells.length) this.setStatus('Éléments repérés — grille à confirmer', 'searching');
+      else this.setStatus('Recherche des éléments du jeu...', 'searching');
+      this.renderMarkers();
     }
 
-    setPaused(paused) {
-      this.paused = Boolean(paused);
-      const button = this.shadow?.getElementById('ga-pause');
-      const analyzeButton = this.shadow?.getElementById('ga-analyze');
-      if (button) button.textContent = this.paused ? 'REPRENDRE' : 'METTRE EN PAUSE';
-      if (analyzeButton) analyzeButton.disabled = !this.gameDetected || this.running || this.paused;
+    setAnalysis(analysis) {
+      this.analysis = analysis || null;
+      this.renderMarkers();
+    }
+
+    setPrediction(prediction) {
+      this.prediction = prediction || null;
+      this.renderMarkers();
     }
 
     setRunning(running) {
       this.running = Boolean(running);
-      const button = this.shadow?.getElementById('ga-pause');
-      const analyzeButton = this.shadow?.getElementById('ga-analyze');
-      if (button) button.textContent = this.paused ? 'REPRENDRE' : 'METTRE EN PAUSE';
-      if (analyzeButton) analyzeButton.disabled = !this.gameDetected || this.running || this.paused;
       if (this.running) this.setStatus('Analyse en cours...', 'running');
-    }
-
-    setCells(cells) {
-      this.cells = Array.isArray(cells) ? cells : [];
-      const count = this.shadow?.getElementById('ga-count');
-      if (count) count.textContent = String(this.cells.filter(cell => this.isMarkableCell(cell)).length);
-
-      const usable = this.cells.some(cell => this.isMarkableCell(cell));
-      // Une nouvelle détection ne doit jamais effacer l'état d'analyse en cours.
-      if (this.running) {
-        this.setStatus('Analyse en cours...', 'running');
-      } else if (usable) {
-        this.setStatus('Jeu détecté — Prêt à analyser', 'ready');
-      } else if (this.cells.length) {
-        this.setStatus('Éléments détectés — Vérification', 'searching');
-      } else {
-        this.setStatus('Recherche des éléments du jeu...', 'searching');
+      else {
+        const count = this.detectedCells.filter(cell => this.isMarkableCell(cell)).length;
+        if (count) this.setStatus('GoldenApple actif — Jeu détecté', 'ready');
+        else this.setStatus('Recherche des éléments du jeu...', 'searching');
       }
-      this.renderMarkers();
     }
 
     isMarkableCell(cell) {
-      if (!cell || (cell.type !== 'apple_cell' && cell.type !== 'apple_bited_cell')) return false;
-      const element = cell.elementRef;
-      const position = cell.gridPosition;
-      if (!element || element.nodeType !== 1 || element.ownerDocument !== document || !element.isConnected) return false;
-      if (!position || !['data-attr', 'index', 'css-grid'].includes(position.method)) return false;
-      return Number.isInteger(cell.row) && cell.row >= 0 &&
-        Number.isInteger(cell.col) && cell.col >= 0;
+      if (!cell || !['apple_cell', 'apple_bited_cell'].includes(cell.type)) return false;
+      const el = cell.elementRef;
+      const pos = cell.gridPosition;
+      if (!el || el.nodeType !== 1 || !el.isConnected || el.ownerDocument !== document) return false;
+      if (!pos || !Number.isInteger(cell.row) || cell.row < 0 ||
+          !Number.isInteger(cell.col) || cell.col < 0) return false;
+      if (pos.method === 'data-attr' || pos.method === 'css-grid') return true;
+      if (pos.method !== 'index' || !Number.isInteger(pos.index) || pos.index < 0) return false;
+
+      // Ne pas accepter l'index si le Detector a utilisé son fallback 5 colonnes.
+      const parent = el.parentElement;
+      if (!parent) return false;
+      const style = getComputedStyle(parent);
+      const template = style.gridTemplateColumns;
+      if (template && template !== 'none') {
+        const columns = template.trim().split(/\s+/).length;
+        return columns > 0 && pos.row === Math.floor(pos.index / columns) && pos.col === pos.index % columns;
+      }
+      const first = parent.firstElementChild;
+      if (first) {
+        const parentWidth = parent.getBoundingClientRect().width;
+        const childWidth = first.getBoundingClientRect().width;
+        if (parentWidth > 0 && childWidth > 0) {
+          const columns = Math.round(parentWidth / childWidth);
+          return columns > 0 && pos.row === Math.floor(pos.index / columns) && pos.col === pos.index % columns;
+        }
+      }
+      return false;
+    }
+
+    findDomCell(row, col) {
+      return this.detectedCells.find(cell =>
+        this.isMarkableCell(cell) && cell.row === row && cell.col === col
+      ) || null;
     }
 
     renderMarkers() {
       if (!this.markerLayer) return;
-      const nextElements = new Set();
+      const desired = new Map();
+      const add = (row, col, color, title, priority) => {
+        if (!Number.isInteger(row) || !Number.isInteger(col)) return;
+        const cell = this.findDomCell(row, col);
+        if (!cell) return;
+        const el = cell.elementRef;
+        const current = desired.get(el);
+        if (!current || priority > current.priority) desired.set(el, { color, title, priority });
+      };
 
-      for (const cell of this.cells) {
-        if (!this.isMarkableCell(cell)) continue;
-        const element = cell.elementRef;
-        nextElements.add(element);
+      for (const cell of (this.analysis?.appleCells || [])) {
+        add(cell.row, cell.col, 'green', 'Pomme identifiée par Analyzer', 2);
+      }
+      for (const cell of (this.analysis?.bittenCells || [])) {
+        add(cell.row, cell.col, 'red', 'Cellule défavorable identifiée par Analyzer', 3);
+      }
 
+      const prediction = this.prediction;
+      if (prediction && (!prediction.validUntil || prediction.validUntil >= Date.now())) {
+        for (const cell of (prediction.recommendedCells || [])) {
+          add(cell.row, cell.col, 'green', 'Recommandation favorable du Predictor', 1);
+        }
+      }
+
+      const active = new Set();
+      for (const [element, spec] of desired) {
+        active.add(element);
         let marker = this.markers.get(element);
         if (!marker) {
           marker = document.createElement('div');
           marker.className = 'ga-cell-marker';
-          const dot = document.createElement('span');
-          dot.className = 'ga-dot';
-          marker.appendChild(dot);
+          marker.appendChild(document.createElement('span'));
           this.markerLayer.appendChild(marker);
           this.markers.set(element, marker);
         }
-
-        marker.firstElementChild.className = `ga-dot ${cell.type === 'apple_cell' ? 'green' : 'red'}`;
-        marker.title = cell.type === 'apple_cell' ? 'Pomme observée par Detector' : 'Pomme mordue observée par Detector';
+        marker.firstElementChild.className = 'ga-dot ' + spec.color;
+        marker.title = spec.title;
         marker._target = element;
       }
-
       for (const [element, marker] of this.markers) {
-        if (!nextElements.has(element) || !element.isConnected) {
+        if (!active.has(element) || !element.isConnected) {
           marker.remove();
           this.markers.delete(element);
         }
@@ -279,8 +267,8 @@
           continue;
         }
         marker.style.display = 'flex';
-        marker.style.left = `${rect.left + rect.width / 2}px`;
-        marker.style.top = `${rect.top + rect.height / 2}px`;
+        marker.style.left = (rect.left + rect.width / 2) + 'px';
+        marker.style.top = (rect.top + rect.height / 2) + 'px';
       }
     }
 
@@ -298,9 +286,8 @@
     }
 
     clearMarkers() {
-      this.markers.forEach(marker => marker.remove());
+      for (const marker of this.markers.values()) marker.remove();
       this.markers.clear();
-      this.cells = [];
     }
 
     destroy() {
