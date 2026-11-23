@@ -86,6 +86,8 @@
     };
 
     detector.onDetectComplete = () => {
+      // Un scan différé ne doit pas relancer l'analyse après une mise en pause.
+      if (ENGINE.state === 'paused' && !ENGINE.manualAnalysis) return;
       if (!ENGINE.manualAnalysis && ENGINE.config.autoAnalyze && analyzer.hasData()) {
         const analysis = analyzer.runAnalysis();
         if (analysis) ENGINE.overlay?.setAnalysis(analysis);
@@ -111,8 +113,13 @@
         old.col === cell.col && old.type === cell.type
       ));
     if (changed) {
+      // La grille DOM a changé : ne jamais conserver des signaux attachés à l'ancienne grille.
       ENGINE.lastDetectedCells = safeCells;
+      ENGINE.lastAnalysis = null;
+      ENGINE.lastPrediction = null;
       ENGINE.overlay?.setDetectedCells(safeCells);
+      ENGINE.overlay?.setAnalysis(null);
+      ENGINE.overlay?.setPrediction(null);
     }
   }
 
@@ -181,6 +188,7 @@
   function startAnalysisCycle() {
     if (ENGINE.state === 'paused' || ENGINE.cycleTimer) return;
     ENGINE.state = 'scanning';
+    ENGINE.overlay?.setPaused?.(false);
     const cycle = () => {
       if (ENGINE.state === 'paused') { ENGINE.cycleTimer = null; return; }
       try {
@@ -197,7 +205,14 @@
   function stopAnalysisCycle() {
     if (ENGINE.cycleTimer) clearTimeout(ENGINE.cycleTimer);
     ENGINE.cycleTimer = null;
+    // Annuler aussi le scan différé déclenché par le MutationObserver.
+    const detector = ENGINE.modules.detector;
+    if (detector?.scanTimer) {
+      clearTimeout(detector.scanTimer);
+      detector.scanTimer = null;
+    }
     ENGINE.state = 'paused';
+    ENGINE.overlay?.setPaused?.(true);
   }
 
   function handleCommand(command, params) {
@@ -291,12 +306,19 @@
 
   function sendCellsDetected(cells) {
     if (!cells || !cells.length) return;
+    // Les références DOM servent uniquement à l'overlay local : elles ne sont
+    // ni clonables ni utiles au service worker Chrome.
+    const serializableCells = cells.map(cell => {
+      if (!cell || typeof cell !== 'object') return cell;
+      const { elementRef, ...data } = cell;
+      return data;
+    });
     sendToBackground({
       type: 'CELLS_DETECTED',
       payload: {
-        cells,
-        appleCells: cells.filter(cell => cell.type === 'apple_cell'),
-        bittenCells: cells.filter(cell => cell.type === 'apple_bited_cell'),
+        cells: serializableCells,
+        appleCells: serializableCells.filter(cell => cell?.type === 'apple_cell'),
+        bittenCells: serializableCells.filter(cell => cell?.type === 'apple_bited_cell'),
         platform: ENGINE.platform, tabId: ENGINE.tabId,
         round: ENGINE.currentRound, metrics: { ...ENGINE.metrics }
       }
