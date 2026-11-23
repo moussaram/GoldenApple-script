@@ -59,6 +59,8 @@
   function linkModules() {
     const { analyzer, detector, predictor } = ENGINE.modules;
     detector.onDetect = cells => {
+      // Ignorer un callback de scan arrivé après STOP, sauf analyse manuelle demandée.
+      if (ENGINE.state === 'paused' && !ENGINE.manualAnalysis) return;
       const safeCells = normalizeDetectedCells(cells);
       ENGINE.lastDetectedCells = safeCells;
       ENGINE.metrics.cellsFound = safeCells.length;
