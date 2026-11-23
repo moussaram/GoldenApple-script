@@ -133,7 +133,8 @@
       const indicator = this.shadow?.getElementById('ga-indicator');
       if (text) text.textContent = message;
       if (indicator) indicator.className = 'ga-indicator ' + state;
-      this.gameDetected = state === 'ready' || state === 'running';
+      const hasGrid = this.detectedCells.some(cell => this.isMarkableCell(cell));
+      this.gameDetected = state === 'ready' || state === 'running' || (state === 'paused' && hasGrid);
       const button = this.shadow?.getElementById('ga-analyze');
       if (button) button.disabled = !this.gameDetected || this.running;
     }
