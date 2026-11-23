@@ -145,6 +145,7 @@
       const markable = this.detectedCells.filter(cell => this.isMarkableCell(cell));
       if (count) count.textContent = String(markable.length);
       if (this.running) this.setStatus('Analyse en cours...', 'running');
+      else if (this.paused) this.setStatus(markable.length ? 'Moteur en pause — Jeu détecté' : 'Moteur en pause', 'paused');
       else if (markable.length) this.setStatus('GoldenApple actif — Jeu détecté', 'ready');
       else if (this.detectedCells.length) this.setStatus('Éléments repérés — grille à confirmer', 'searching');
       else this.setStatus('Recherche des éléments du jeu...', 'searching');
