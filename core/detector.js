@@ -52,17 +52,12 @@ class AppleDetector {
     scan() {
         const cells = [];
 
-        // Stratégie 1: Scan du DOM
+        // Scan DOM uniquement dans le document courant.
+        // Le manifeste injecte le détecteur dans chaque frame autorisée.
+        // Ne jamais demander getContext('2d') à un canvas du jeu : cela peut
+        // réserver son contexte avant l'initialisation WebGL et casser le rendu.
         const domCells = this.scanDOM();
         cells.push(...domCells);
-
-        // Stratégie 2: Scan des Canvas
-        const canvasCells = this.scanCanvas();
-        cells.push(...canvasCells);
-
-        // Stratégie 3: Scan des iframes
-        const iframeCells = this.scanIframes();
-        cells.push(...iframeCells);
 
         // Déduplication et vérification
         const uniqueCells = this.deduplicate(cells);
@@ -260,7 +255,19 @@ class AppleDetector {
         };
 
         // === DÉTERMINATION DU TYPE ===
-        const { type, confidence } = this.determineType(scores);
+        // Respecter en priorité les états explicites du jeu lorsqu'ils existent.
+        // Les heuristiques de couleur/texte ne doivent pas inverser ces types.
+        const explicitTypeValue =
+            element.classList?.contains('apple_cell') ? 'apple_cell' :
+            element.classList?.contains('apple_bited_cell') ? 'apple_bited_cell' :
+            element.getAttribute('data-cell-type') ||
+            element.getAttribute('data-type') ||
+            element.getAttribute('data-state') || '';
+        const explicitType = String(explicitTypeValue).trim().toLowerCase().replace(/-/g, '_');
+        const detected = explicitType === 'apple_cell' || explicitType === 'apple_bited_cell'
+            ? { type: explicitType, confidence: 1 }
+            : this.determineType(scores);
+        const { type, confidence } = detected;
 
         // === POSITION DANS LA GRILLE ===
         const gridPosition = this.detectGridPosition(element);
