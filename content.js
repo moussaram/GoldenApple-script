@@ -12,7 +12,7 @@
     currentRound: null,
     modules: { analyzer: null, detector: null, predictor: null },
     overlay: null,
-    config: { scanInterval: 200, confidenceThreshold: 0.6, autoAnalyze: true, debug: false },
+    config: { scanInterval: 1000, confidenceThreshold: 0.6, autoAnalyze: true, debug: false },
     metrics: { startTime: null, roundsAnalyzed: 0, cellsFound: 0, predictionsMade: 0 },
     cycleTimer: null,
     observer: null,
@@ -375,7 +375,7 @@
 
     sendToBackground({
       type: 'ENGINE_STATUS',
-      payload: { state: ENGINE.state, platform: ENGINE.platform, tabId: ENGINE.tabId, version: '2.1.0' }
+      payload: { state: ENGINE.state, platform: ENGINE.platform, tabId: ENGINE.tabId, version: '2.1.3' }
     });
 
     startAnalysisCycle();
