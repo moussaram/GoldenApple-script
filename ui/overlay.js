@@ -62,8 +62,8 @@
               '<button id="ga-signals" class="ga-secondary">MASQUER LES SIGNAUX</button>' +
             '</div>' +
             '<div class="ga-legend">' +
-              '<span><i class="ga-dot green"></i> Recommandation favorable / pomme détectée</span>' +
-              '<span><i class="ga-dot red"></i> Cellule défavorable détectée</span>' +
+              '<span><i class="ga-dot green"></i> Pomme détectée (apple_cell)</span>' +
+              '<span><i class="ga-dot red"></i> Pomme mordue détectée (apple_bited_cell)</span>' +
             '</div>' +
           '</div>' +
         '</section>' +
@@ -238,6 +238,16 @@
       }
       for (const cell of (this.analysis?.bittenCells || [])) {
         add(cell.row, cell.col, 'red', 'Cellule défavorable identifiée par Analyzer', 3);
+      }
+
+      // Observation directe : les deux types explicitement fournis par Detector.
+      // Ces marqueurs restent distincts des recommandations du Predictor.
+      for (const cell of this.detectedCells) {
+        if (cell?.type === 'apple_cell') {
+          add(cell.row, cell.col, 'green', 'Pomme détectée par Detector', 5);
+        } else if (cell?.type === 'apple_bited_cell') {
+          add(cell.row, cell.col, 'red', 'Pomme mordue détectée par Detector', 6);
+        }
       }
 
       const prediction = this.prediction;
