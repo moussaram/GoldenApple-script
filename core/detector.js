@@ -1020,6 +1020,7 @@ class AppleDetector {
             const analysis = this.analyzeElement(element, 'user-click');
             if (analysis.confidence >= this.thresholds.minConfidence) {
                 analysis.clicked = true;
+                analysis.elementRef = element;
                 this.revealedCells.set(element, analysis);
                 
                 if (this.onDetect) {
