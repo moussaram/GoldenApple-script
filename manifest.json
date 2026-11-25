@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GoldenApple Engine",
-  "version": "2.1.0",
+  "version": "2.1.3",
   "description": "Moteur GoldenApple avec marquage visuel local dans la page du jeu",
   "permissions": [
     "storage",
@@ -12,6 +12,8 @@
   ],
   "host_permissions": [
     "*://*.1xbet.com/*",
+    "*://1xbet.bj/*",
+    "*://*.1xbet.bj/*",
     "*://*.melbet.com/*",
     "*://*.winwin.com/*",
     "*://winwin-17094.pro/*",
@@ -32,6 +34,8 @@
     {
       "matches": [
         "*://*.1xbet.com/*",
+    "*://1xbet.bj/*",
+    "*://*.1xbet.bj/*",
         "*://*.melbet.com/*",
         "*://*.winwin.com/*",
         "*://winwin-17094.pro/*",
