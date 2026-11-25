@@ -641,8 +641,8 @@ class ApplePredictor {
 
         recommendations.sort((a, b) => b.confidence - a.confidence);
 
-        const next = currentPhase + 1;
-        const nextPhaseStats = phasePerformance.get(next);
+        const nextPhase = currentPhase + 1;
+        const nextPhaseStats = phasePerformance.get(nextPhase);
         const nextPhaseConfidence = nextPhaseStats 
             ? nextPhaseStats.totalApples / (nextPhaseStats.totalApples + nextPhaseStats.totalBitten || 1)
             : 0.5;
